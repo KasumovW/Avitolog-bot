@@ -3,6 +3,8 @@ require("dotenv").config();
 
 const bot = new Bot(process.env.BOT_API_KEY);
 
+const userSessions = new Map();
+
 bot.command("start", async (ctx) => {
 	const keyboard = new InlineKeyboard()
 		.url("Задать вопрос", "https://t.me/z_web")
@@ -108,25 +110,36 @@ bot.callbackQuery("daily_gift", async (ctx) => {
 });
 
 bot.callbackQuery("create_task", async (ctx) => {
-	await ctx.answerCallbackQuery();
-
-	const keyboard = new InlineKeyboard()
-		.text("1", "set_links_1")
-		.text("2", "set_links_2")
-		.text("3", "set_links_3")
-		.text("4", "set_links_4")
-		.text("5", "set_links_5")
-		.row()
-		.text("6", "set_links_6")
-		.text("7", "set_links_7")
-		.text("8", "set_links_8")
-		.text("9", "set_links_9")
-		.text("10", "set_links_10");
-
-	await ctx.reply("Для начала, пожалуйста, укажите количество ссылок на объявления Авито, которые вы хотите добавить (от 1 до 10).", {
-		reply_markup: keyboard,
-	});
+    await ctx.answerCallbackQuery();
+    const keyboard = new InlineKeyboard();
+    for (let i = 1; i <= 10; i++) {
+        keyboard.text(`${i}`, `set_links_${i}`);
+        if (i % 5 === 0) keyboard.row();
+    }
+    await ctx.reply("Выберите количество ссылок на объявления (1-10):", {
+        reply_markup: keyboard,
+    });
 });
+
+bot.callbackQuery(/^set_links_(\d+)$/, async (ctx) => {
+    const count = parseInt(ctx.match[1], 10);
+    userSessions.set(ctx.chat.id, { linksCount: count, links: [] });
+    await ctx.answerCallbackQuery();
+    await ctx.reply(`Введите ${count} ссылок на объявления (по одной в каждом сообщении):`);
+});
+
+bot.on("message:text", async (ctx) => {
+    const session = userSessions.get(ctx.chat.id);
+    if (!session || session.links.length >= session.linksCount) return;
+    session.links.push(ctx.message.text.trim());
+    userSessions.set(ctx.chat.id, session);
+    if (session.links.length < session.linksCount) {
+        await ctx.reply(`Принято ${session.links.length}/${session.linksCount}. Введите следующую ссылку:`);
+    } else {
+        await ctx.reply(`✅ Все ${session.linksCount} ссылок приняты. Задача сформирована.`);
+    }
+});
+
 
 bot.catch((err) => {
 	console.error("Global Error:", err);
