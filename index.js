@@ -5,6 +5,13 @@ const bot = new Bot(process.env.BOT_API_KEY);
 
 const userSessions = new Map();
 
+// Устанавливаем список команд
+bot.api.setMyCommands([
+    { command: "start", description: "Запустить бота" },
+    { command: "to_menu", description: "Главное меню" },
+    { command: "create_task", description: "Создать задачу" },
+]);
+
 bot.command("start", async (ctx) => {
 	const keyboard = new InlineKeyboard()
 		.url("Задать вопрос", "https://t.me/z_web")
@@ -27,6 +34,44 @@ bot.command("start", async (ctx) => {
 			"Итак, давайте создадим задачу, далее я расскажу вам про важные моменты в накрутке.",
 		{ parse_mode: "HTML", reply_markup: keyboard }
 	);
+});
+
+bot.command("to_menu", async (ctx) => {
+	const keyboard = new InlineKeyboard()
+		.url("Задать вопрос", "https://t.me/z_web")
+		.row()
+		.text("Как это работает?", "how_it_works")
+		.row()
+		.text("О нас", "about_us")
+		.row()
+		.text("Ежедневный подарок", "daily_gift")
+		.row()
+		.text("Создать задачу", "create_task");
+
+	// Используем reply, если сообщение нельзя редактировать
+	await ctx.reply("🤖 <b>Добро пожаловать в главное меню!</b>\n\n" + "Выберите действие:", {
+		parse_mode: "HTML",
+		reply_markup: keyboard,
+	});
+});
+
+bot.command("create_task", async (ctx) => {
+	const keyboard = new InlineKeyboard();
+	for (let i = 1; i <= 10; i++) {
+		keyboard.text(`${i}`, `set_links_${i}`);
+		if (i % 5 === 0) keyboard.row();
+	}
+	await ctx.reply("Выберите количество ссылок на объявления (1-10):", {
+		reply_markup: keyboard,
+	});
+});
+
+// Обработка нажатия на кнопку "Отменить создание задачи"
+bot.callbackQuery("cancel_task", async (ctx) => {
+    await ctx.answerCallbackQuery();  // Ответ на нажатие кнопки
+
+    // Ответ пользователю о том, что задача отменена
+    await ctx.reply("Задача успешно отменена.");
 });
 
 bot.callbackQuery("to_menu", async (ctx) => {
